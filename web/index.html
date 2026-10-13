@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Election Commission Management System (ECMS)</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Header Section with National Emblem & Tricolor Strip -->
+    <header class="portal-header">
+        <div class="top-bar">
+            <span>Official Portal • Election Commission Management System</span>
+            <span>Digital Electoral Roll & Electronic Ballot Unit (JDBC Powered)</span>
+        </div>
+        <div class="tricolor-strip"></div>
+        <div class="header-container">
+            <div class="logo-section">
+                <div class="emblem-icon">🏛️</div>
+                <div class="portal-title">
+                    <h1>Election Commission of India</h1>
+                    <p>National Electoral Management System (ECMS - DBMS LAB)</p>
+                </div>
+            </div>
+            <div class="user-badge-bar" id="userBadgeBar">
+                <span class="role-pill role-guest" id="userRoleBadge">Guest</span>
+                <span id="userNameDisplay" style="font-size: 0.85rem; font-weight: 600;">Not Logged In</span>
+                <button class="btn btn-outline btn-sm" id="authBtn" onclick="handleAuthAction()" style="border-color: rgba(255,255,255,0.3); color: white;">Login</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-bar">
+        <div class="nav-container">
+            <button class="nav-tab active" onclick="switchTab('ballot')">🗳️ Cast Vote / Ballot</button>
+            <button class="nav-tab" onclick="switchTab('results')">📊 Live Results & Analytics</button>
+            <button class="nav-tab" onclick="switchTab('register')">📝 Voter Registration</button>
+            <button class="nav-tab" onclick="switchTab('update')">✏️ Update Elector (Form 8)</button>
+            <button class="nav-tab" onclick="switchTab('admin')">🛠️ EC Admin Portal</button>
+            <button class="nav-tab" onclick="switchTab('sql')">📜 DDL & DML Commands</button>
+            <button class="nav-tab" id="loginTabBtn" onclick="switchTab('login')">🔑 Portal Login</button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="main-wrapper">
+
+        <!-- 1. LOGIN SECTION -->
+        <section id="section-login" class="content-section">
+            <div class="card" style="max-width: 550px; margin: 2rem auto;">
+                <div class="card-header">
+                    <h2>🔑 Electoral Portal Login</h2>
+                    <span class="role-pill role-admin">Official Access</span>
+                </div>
+
+                <div class="demo-box">
+                    <p>⚡ Quick Test Login (Click to Auto-fill & Authenticate):</p>
+                    <div class="demo-btns">
+                        <button class="btn btn-outline btn-sm" onclick="quickLogin('admin', 'admin123')">👑 CEC (Admin)</button>
+                        <button class="btn btn-outline btn-sm" onclick="quickLogin('voter1', 'voter123')">👤 Voter 1 (Delhi)</button>
+                        <button class="btn btn-outline btn-sm" onclick="quickLogin('voter2', 'voter123')">👤 Voter 2 (Delhi)</button>
+                        <button class="btn btn-outline btn-sm" onclick="quickLogin('voter3', 'voter123')">👤 Voter 3 (Mumbai)</button>
+                    </div>
+                </div>
+
+                <div id="loginAlertBox"></div>
+
+                <form id="loginForm" onsubmit="submitLogin(event)">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="loginUsername">Username / Official ID / EPIC</label>
+                        <input type="text" id="loginUsername" class="form-control" placeholder="e.g. admin or voter1" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Secure Login via JDBC</button>
+                </form>
+
+                <div style="margin-top: 1.25rem; text-align: center; font-size: 0.85rem; color: var(--text-muted);">
+                    New elector? <a href="#" onclick="switchTab('register')" style="color: var(--primary); font-weight: 600;">Register for Voter ID</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. VOTER REGISTRATION & ELIGIBILITY SECTION -->
+        <section id="section-register" class="content-section">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📝 Form 6: Application for Registration as New Elector</h2>
+                    <span class="role-pill role-voter">Constitutional Enrollment</span>
+                </div>
+
+                <div class="alert alert-info">
+                    ℹ️ <strong>Constitutional Eligibility Norm (Article 326):</strong> Every citizen of India who is not less than <strong>18 years of age</strong> on the qualifying date and not disqualified under any law is eligible to be registered in the electoral roll.
+                </div>
+
+                <div id="regAlertBox"></div>
+
+                <form id="registerForm" onsubmit="submitRegistration(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regFullName">Full Legal Name *</label>
+                            <input type="text" id="regFullName" class="form-control" placeholder="As per Aadhaar / Birth Certificate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regDob">Date of Birth (DOB) *</label>
+                            <input type="date" id="regDob" class="form-control" onchange="calculateLiveAge()" required>
+                            <small id="ageFeedback" style="font-size: 0.8rem; font-weight: 600; margin-top: 2px; color: var(--text-muted);">Enter DOB to calculate eligibility</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="regGender">Gender *</label>
+                            <select id="regGender" class="form-control" required>
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="regConstituency">Electoral Assembly Constituency *</label>
+                            <select id="regConstituency" class="form-control" required>
+                                <option value="">Loading constituencies via JDBC...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPhone">Mobile Number (10 Digits) *</label>
+                            <input type="tel" id="regPhone" class="form-control" placeholder="9876543210" pattern="[0-9]{10}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmail">Email Address</label>
+                            <input type="email" id="regEmail" class="form-control" placeholder="citizen@example.com">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="regAddress">Residential Address *</label>
+                            <textarea id="regAddress" class="form-control" rows="2" placeholder="House No, Street, Ward, City, Pincode" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="regUsername">Portal Username *</label>
+                            <input type="text" id="regUsername" class="form-control" placeholder="Desired login username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">Portal Password *</label>
+                            <input type="password" id="regPassword" class="form-control" placeholder="Minimum 6 characters" minlength="6" required>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                        <button type="reset" class="btn btn-outline">Clear Form</button>
+                        <button type="submit" id="regSubmitBtn" class="btn btn-saffron">Verify Eligibility & Submit Form 6</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 2B. VOTER PARTICULARS UPDATION (FORM 8 - EXPLICIT SQL UPDATE COMMANDS) -->
+        <section id="section-update" class="content-section">
+            <div class="card">
+                <div class="card-header">
+                    <h2>✏️ Form 8: Application for Correction to Particulars in Electoral Roll</h2>
+                    <span class="role-pill role-voter">SQL UPDATE Command</span>
+                </div>
+
+                <div class="alert alert-info">
+                    ℹ️ <strong>DBMS Operation:</strong> This form demonstrates execution of relational <strong>SQL UPDATE</strong> queries on the <code>voters</code> and <code>users</code> tables via JDBC:
+                    <br><code>UPDATE voters SET address = ?, phone = ? WHERE voter_id = ?;</code>
+                </div>
+
+                <div id="updateAlertBox"></div>
+
+                <form id="updateVoterForm" onsubmit="submitVoterUpdate(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="updateVoterSelect">Select Elector / Voter ID *</label>
+                            <select id="updateVoterSelect" class="form-control" onchange="populateUpdateFields()" required>
+                                <option value="">Loading registered electors via JDBC...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="updatePhone">New Mobile Number *</label>
+                            <input type="tel" id="updatePhone" class="form-control" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="updateEmail">Updated Email Address</label>
+                            <input type="email" id="updateEmail" class="form-control" placeholder="new.email@example.com">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="updateAddress">Updated Residential Address *</label>
+                            <textarea id="updateAddress" class="form-control" rows="2" placeholder="New residential address" required></textarea>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                        <button type="button" class="btn btn-outline" onclick="populateUpdateFields()">Reset to Current Values</button>
+                        <button type="submit" class="btn btn-primary">Execute SQL UPDATE Command via JDBC</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 3. VOTING / ELECTRONIC BALLOT UNIT SECTION -->
+        <section id="section-ballot" class="content-section active">
+            <!-- Voter Identity Card Display -->
+            <div class="card" id="voterProfileCard" style="display: none;">
+                <div class="card-header">
+                    <h2>🪪 Elector Photo Identity Card (EPIC)</h2>
+                    <span id="voterStatusBadge" class="role-pill role-voter">Eligible</span>
+                </div>
+                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;">
+                    <div style="font-size: 3.5rem; background: #e2e8f0; padding: 0.5rem 1rem; border-radius: 8px;">👤</div>
+                    <div style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                        <div><strong style="color: var(--text-muted); font-size: 0.78rem;">EPIC / VOTER ID:</strong><div id="dispEpic" style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">--</div></div>
+                        <div><strong style="color: var(--text-muted); font-size: 0.78rem;">ELECTOR NAME:</strong><div id="dispName" style="font-weight: 600;">--</div></div>
+                        <div><strong style="color: var(--text-muted); font-size: 0.78rem;">CONSTITUENCY:</strong><div id="dispConst" style="font-weight: 600;">--</div></div>
+                        <div><strong style="color: var(--text-muted); font-size: 0.78rem;">AGE / GENDER:</strong><div id="dispAgeGender">--</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login Prompt if Not Logged In -->
+            <div class="card" id="ballotLoginPrompt">
+                <div style="text-align: center; padding: 2rem 1rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🗳️</div>
+                    <h2 style="color: var(--primary); margin-bottom: 0.5rem;">Electronic Voting Machine (EVM) Terminal</h2>
+                    <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto 1.5rem;">Please log in with your registered Voter ID (EPIC) or username to access your constituency's electronic ballot.</p>
+                    <button class="btn btn-primary" onclick="switchTab('login')">🔑 Proceed to Voter Login</button>
+                </div>
+            </div>
+
+            <!-- Voting Machine Interface -->
+            <div id="evmBallotContainer" style="display: none;">
+                <div class="card-header">
+                    <h2>🗳️ Electronic Ballot Unit (Ballot Paper Unit)</h2>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Constituency: <strong id="ballotConstTitle">--</strong></span>
+                </div>
+
+                <div class="alert alert-info">
+                    ℹ️ <strong>Instructions to Elector:</strong> Review candidate qualifications, educational credentials, and declared criminal record before pressing the <strong>BLUE BUTTON</strong> against your chosen candidate. Voting is strictly secret and irreversible.
+                </div>
+
+                <div id="ballotAlertBox"></div>
+
+                <div class="evm-unit">
+                    <div class="evm-header">
+                        <span>SL. NO. & CANDIDATE PARTICULARS</span>
+                        <span style="margin-right: 25px;">PARTY & VOTE BUTTON</span>
+                    </div>
+                    <div id="ballotRowsList">
+                        <!-- Loaded via JDBC dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VVPAT Confirmation Slip Modal / Display -->
+            <div id="vvpatDisplayContainer" style="display: none;">
+                <div class="alert alert-success" style="max-width: 500px; margin: 1rem auto;">
+                    ✅ <strong>VOTE CAST VERIFIED!</strong> Your ballot was encrypted and recorded in the database ledger.
+                </div>
+                <div class="vvpat-slip">
+                    <h3>🇮🇳 ELECTION COMMISSION OF INDIA<br><span style="font-size: 0.75rem;">VOTER VERIFIABLE PAPER AUDIT TRAIL (VVPAT)</span></h3>
+                    <div class="vvpat-row"><span>ELECTOR EPIC:</span><strong id="vvpatEpic">--</strong></div>
+                    <div class="vvpat-row"><span>ELECTOR NAME:</span><strong id="vvpatVoter">--</strong></div>
+                    <div class="vvpat-row"><span>CANDIDATE:</span><strong id="vvpatCandidate">--</strong></div>
+                    <div class="vvpat-row"><span>PARTY:</span><strong id="vvpatParty">--</strong></div>
+                    <div class="vvpat-row"><span>PARTY SYMBOL:</span><strong id="vvpatSymbol">--</strong></div>
+                    <div class="vvpat-row"><span>DATE & TIME:</span><strong id="vvpatTime">--</strong></div>
+                    <div class="vvpat-hash">
+                        <span style="font-size: 0.65rem; color: #78350f;">SHA-256 DIGITAL BALLOT AUDIT TOKEN:</span><br>
+                        <span id="vvpatHash">--</span>
+                    </div>
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print Slip</button>
+                        <button class="btn btn-primary btn-sm" onclick="switchTab('results')">📊 View Live Results</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. LIVE RESULTS & ANALYTICS SECTION -->
+        <section id="section-results" class="content-section">
+            <div class="card-header">
+                <h2>📊 National Election Commission Live Analytics</h2>
+                <div>
+                    <button class="btn btn-outline btn-sm" onclick="loadElectionResults()">🔄 Refresh Live Tally</button>
+                </div>
+            </div>
+
+            <!-- Stats Metric Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div>
+                        <div class="stat-val" id="kpiTotalVoters">--</div>
+                        <div class="stat-label">Total Registered Electorate</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🗳️</div>
+                    <div>
+                        <div class="stat-val" id="kpiTotalVotes">--</div>
+                        <div class="stat-label">Total Ballots Cast</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div>
+                        <div class="stat-val" id="kpiTurnout">--%</div>
+                        <div class="stat-label">National Voter Turnout</div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="kpiTurnoutBar" style="width: 0%;"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="card" style="padding: 1rem; margin-bottom: 1.25rem;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; font-size: 0.9rem;">Filter by Assembly Constituency:</label>
+                    <select id="resultsConstFilter" class="form-control" style="max-width: 300px;" onchange="renderFilteredResults()">
+                        <option value="ALL">All Constituencies (Overview)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Results Table -->
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Constituency</th>
+                                <th>Candidate Name</th>
+                                <th>Party</th>
+                                <th>Symbol</th>
+                                <th>Votes Count</th>
+                                <th>Vote Share (%)</th>
+                                <th>Status / Leading</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading real-time election results via JDBC...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. EC ADMIN PORTAL -->
+        <section id="section-admin" class="content-section">
+            <div class="card-header">
+                <h2>🛠️ Returning Officer & CEC Administration Console</h2>
+                <span class="role-pill role-admin">Role: Commission Official</span>
+            </div>
+
+            <!-- Admin Tabs -->
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-sm" id="adminSubVotersBtn" onclick="switchAdminSubTab('voters')">👥 Electoral Roll (Voters)</button>
+                <button class="btn btn-outline btn-sm" id="adminSubConstBtn" onclick="switchAdminSubTab('constituencies')">🏛️ Create Constituency (DML)</button>
+                <button class="btn btn-outline btn-sm" id="adminSubCandBtn" onclick="switchAdminSubTab('candidates')">➕ Nominate Candidate</button>
+                <button class="btn btn-outline btn-sm" id="adminSubLogsBtn" onclick="switchAdminSubTab('logs')">📑 Audit Trail Logs</button>
+            </div>
+
+            <!-- SubTab: Create Constituency (DML Execution) -->
+            <div id="adminSubConstituencies" class="card" style="display: none;">
+                <div class="card-header">
+                    <h2>🏛️ DML Command: Delimitation & Creation of Electoral Constituency</h2>
+                    <span class="role-pill role-admin">Chief Election Commissioner Access</span>
+                </div>
+                <div class="alert alert-info">
+                    ℹ️ <strong>DML Insertion Demonstration:</strong> Submitting this form executes the following relational DML query via JDBC:
+                    <br><code>INSERT INTO constituencies (name, state, total_voters, status) VALUES (?, ?, 0, 'ACTIVE');</code>
+                </div>
+                <div id="constituencyCreateAlert"></div>
+                <form id="constituencyCreateForm" onsubmit="submitConstituencyCreation(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="newConstName">Constituency Name *</label>
+                            <input type="text" id="newConstName" class="form-control" placeholder="e.g. Kolkata North, Hyderabad Central, Varanasi" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newConstState">State / Union Territory *</label>
+                            <input type="text" id="newConstState" class="form-control" placeholder="e.g. West Bengal, Telangana, Uttar Pradesh" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newConstStatus">Polling Status *</label>
+                            <select id="newConstStatus" class="form-control" required>
+                                <option value="ACTIVE">ACTIVE (Polling Scheduled)</option>
+                                <option value="CLOSED">CLOSED (Polling Concluded)</option>
+                                <option value="SUSPENDED">SUSPENDED (Under Delimitation Review)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem; text-align: right;">
+                        <button type="submit" class="btn btn-saffron">Execute DML: INSERT INTO constituencies</button>
+                    </div>
+                </form>
+
+                <!-- Current Constituencies Table -->
+                <div style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.05rem; margin-bottom: 0.75rem; color: var(--primary);">Existing Electoral Constituencies in Database</h3>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Constituency ID</th>
+                                    <th>Constituency Name</th>
+                                    <th>State / UT</th>
+                                    <th>Registered Electors</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminConstListBody">
+                                <tr><td colspan="5" style="text-align: center;">Loading constituencies...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SubTab: Voter Roll -->
+            <div id="adminSubVoters" class="card">
+                <div class="card-header">
+                    <h2>Electoral Roll Directory (JDBC Queried)</h2>
+                    <input type="text" id="voterSearchInput" class="form-control" placeholder="Search by Name or EPIC..." style="max-width: 280px;" onkeyup="filterVoterRoll()">
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>EPIC No</th>
+                                <th>Elector Full Name</th>
+                                <th>Age</th>
+                                <th>Gender</th>
+                                <th>Constituency</th>
+                                <th>Mobile</th>
+                                <th>Voted Status</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminVoterRollBody">
+                            <tr><td colspan="8" style="text-align: center;">Loading voter roll...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SubTab: Candidate Nomination -->
+            <div id="adminSubCandidates" class="card" style="display: none;">
+                <div class="card-header">
+                    <h2>➕ Form 7: Nomination of Contesting Candidate</h2>
+                    <span class="role-pill role-admin">Returning Officer Verification</span>
+                </div>
+                <div class="alert alert-info">
+                    ℹ️ <strong>Age Requirement:</strong> Under Article 84 and 173 of the Constitution, minimum age for contesting election is <strong>25 years</strong>.
+                </div>
+                <div id="candidateNomAlert"></div>
+                <form id="candidateNomForm" onsubmit="submitCandidateNomination(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="candName">Candidate Full Name *</label>
+                            <input type="text" id="candName" class="form-control" placeholder="Candidate's full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="candParty">Political Party *</label>
+                            <select id="candParty" class="form-control" required>
+                                <option value="">Select Party</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="candConstituency">Contesting Constituency *</label>
+                            <select id="candConstituency" class="form-control" required>
+                                <option value="">Select Constituency</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="candAge">Age (Years) * [Min 25]</label>
+                            <input type="number" id="candAge" class="form-control" min="25" max="100" value="35" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="candEdu">Highest Educational Qualification *</label>
+                            <input type="text" id="candEdu" class="form-control" placeholder="e.g. M.Sc., B.Tech, LL.B." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="candCriminal">Declared Criminal Cases (0 if none) *</label>
+                            <input type="number" id="candCriminal" class="form-control" min="0" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="candAssets">Total Declared Assets (₹ INR)</label>
+                            <input type="number" id="candAssets" class="form-control" min="0" value="10000000" step="100000">
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem; text-align: right;">
+                        <button type="submit" class="btn btn-saffron">Enroll Nominee in Electronic Ballot</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SubTab: Audit Logs -->
+            <div id="adminSubLogs" class="card" style="display: none;">
+                <div class="card-header">
+                    <h2>📑 Election Commission Immutable Audit Trail</h2>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Log ID</th>
+                                <th>Action Type</th>
+                                <th>Actor</th>
+                                <th>Description / Details</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminAuditLogBody">
+                            <tr><td colspan="5" style="text-align: center;">Loading audit logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. DDL & DML COMMANDS VIEWER (FOR LAB EXAM EVALUATION) -->
+        <section id="section-sql" class="content-section">
+            <div class="card-header">
+                <h2>📜 Database Definition (DDL) & Data Manipulation (DML) Commands</h2>
+                <div>
+                    <button class="btn btn-outline btn-sm" onclick="copySqlCode()">📋 Copy SQL Script</button>
+                    <a href="database/DDL_DML.sql" target="_blank" class="btn btn-primary btn-sm">⬇️ Open DDL_DML.sql</a>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                ℹ️ <strong>DBMS Lab Test Requirement:</strong> Below is the exhaustive SQL script containing all Table Schemas (DDL), Foreign Key Constraints, CHECK validations, Pre-seeded Data (DML), and Analytical Queries executed via JDBC.
+            </div>
+
+            <pre class="sql-pre" id="sqlViewerPre">-- Loading SQL script from server database/DDL_DML.sql...</pre>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p><strong>Election Commission Management System (ECMS)</strong> • Developed using Java 26, JDBC Driver & Embedded Web Server</p>
+        <p style="margin-top: 4px; font-size: 0.75rem;">Database Lab Assessment • Fully Functional with ACID Transactional Voting & Real-time Analytics</p>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script src="js/app.js"></script>
+</body>
+</html>
+
