@@ -1,13 +1,7 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.js": {
-      "includeFiles": "election.db,database/**",
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/api/(.*)", "destination": "/api/index.js?action=$1" },
     { "source": "/css/(.*)", "destination": "/web/css/$1" },
     { "source": "/js/(.*)", "destination": "/web/js/$1" },
     { "source": "/database/(.*)", "destination": "/database/$1" },

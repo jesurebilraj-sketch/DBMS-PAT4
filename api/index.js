@@ -1,41 +1,161 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const initSqlJs = require('sql.js');
+const initSqlJs = require('sql.js/dist/sql-asm.js');
 
 let db = null;
 const tmpDbPath = '/tmp/election.db';
+
+const EMBEDDED_SEED_SQL = `
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(100) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS constituencies (
+    constituency_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    state VARCHAR(50) NOT NULL,
+    total_voters INTEGER DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'ACTIVE'
+);
+
+CREATE TABLE IF NOT EXISTS parties (
+    party_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    party_name VARCHAR(100) NOT NULL UNIQUE,
+    abbreviation VARCHAR(10) NOT NULL,
+    symbol VARCHAR(50) NOT NULL,
+    leader_name VARCHAR(100) NOT NULL,
+    manifesto TEXT
+);
+
+CREATE TABLE IF NOT EXISTS candidates (
+    candidate_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    full_name VARCHAR(100) NOT NULL,
+    party_id INTEGER NOT NULL,
+    constituency_id INTEGER NOT NULL,
+    age INTEGER NOT NULL,
+    education VARCHAR(50) NOT NULL,
+    criminal_cases INTEGER DEFAULT 0,
+    assets_declared DOUBLE DEFAULT 0.0,
+    votes_count INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS voters (
+    voter_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER UNIQUE,
+    epic_no VARCHAR(20) NOT NULL UNIQUE,
+    dob VARCHAR(10) NOT NULL,
+    age INTEGER NOT NULL,
+    gender VARCHAR(10) NOT NULL,
+    constituency_id INTEGER NOT NULL,
+    address TEXT NOT NULL,
+    phone VARCHAR(15) NOT NULL,
+    is_verified INTEGER DEFAULT 1,
+    has_voted INTEGER DEFAULT 0,
+    voted_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS votes (
+    vote_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    constituency_id INTEGER NOT NULL,
+    candidate_id INTEGER NOT NULL,
+    ballot_hash VARCHAR(64) NOT NULL UNIQUE,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action_type VARCHAR(50) NOT NULL,
+    performed_by VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR IGNORE INTO constituencies (constituency_id, name, state, total_voters, status) VALUES
+(1, 'New Delhi Central', 'Delhi', 4, 'ACTIVE'),
+(2, 'Mumbai South', 'Maharashtra', 3, 'ACTIVE'),
+(3, 'Bengaluru South', 'Karnataka', 3, 'ACTIVE'),
+(4, 'Chennai Central', 'Tamil Nadu', 2, 'ACTIVE');
+
+INSERT OR IGNORE INTO parties (party_id, party_name, abbreviation, symbol, leader_name, manifesto) VALUES
+(1, 'National Democratic Alliance', 'NDA', 'Lotus', 'J. P. Nadda', 'Infrastructure, Economic Growth, Digital Governance'),
+(2, 'United Progressive Alliance', 'UPA', 'Hand', 'Mallikarjun Kharge', 'Social Welfare, Rural Employment, Education Reform'),
+(3, 'Aam Aadmi Party', 'AAP', 'Broom', 'Arvind Kejriwal', 'Healthcare Clinics, Free Electricity, Public Schools'),
+(4, 'Independent Coalition', 'IND', 'Kite', 'Self-Nominated', 'Constituency Development, Civic Amenities, Transparency');
+
+INSERT OR IGNORE INTO candidates (candidate_id, full_name, party_id, constituency_id, age, education, criminal_cases, assets_declared, votes_count) VALUES
+(1, 'Rajesh Sharma', 1, 1, 48, 'Post Graduate (Economics)', 0, 45000000.0, 0),
+(2, 'Priya Venkat', 2, 1, 42, 'LL.B. (Constitutional Law)', 0, 28000000.0, 0),
+(3, 'Sanjay Gupta', 3, 1, 38, 'B.Tech (Computer Science)', 0, 15000000.0, 0),
+(4, 'Alok Mathur', 4, 1, 51, 'M.A. (Public Policy)', 0, 8500000.0, 0),
+(5, 'Aditya Deshmukh', 1, 2, 45, 'M.B.A. (Finance)', 0, 62000000.0, 0),
+(6, 'Farhan Merchant', 2, 2, 53, 'Chartered Accountant', 0, 51000000.0, 0),
+(7, 'Sunita Kadam', 3, 2, 39, 'M.S.W. (Social Work)', 0, 9500000.0, 0),
+(8, 'Dr. Ramesh Rao', 1, 3, 50, 'Ph.D. (Electronics)', 0, 39000000.0, 0),
+(9, 'Ananya Murthy', 2, 3, 36, 'M.Sc. (Data Science)', 0, 22000000.0, 0),
+(10, 'Deepak Gowda', 4, 3, 44, 'Graduate (Commerce)', 0, 14000000.0, 0),
+(11, 'S. Ramakrishnan', 1, 4, 55, 'B.L. (Law)', 0, 33000000.0, 0),
+(12, 'Kavitha Selvam', 2, 4, 41, 'M.A. (Literature)', 0, 19000000.0, 0);
+
+INSERT OR IGNORE INTO users (user_id, username, password, full_name, role, email) VALUES
+(1, 'admin', 'admin123', 'Chief Election Commissioner', 'ADMIN', 'cec@eci.gov.in'),
+(2, 'officer_delhi', 'officer123', 'Returning Officer Delhi', 'OFFICER', 'ro.delhi@eci.gov.in'),
+(3, 'voter1', 'voter123', 'Aarav Patel', 'VOTER', 'aarav@gmail.com'),
+(4, 'voter2', 'voter123', 'Sneha Iyer', 'VOTER', 'sneha@gmail.com'),
+(5, 'voter3', 'voter123', 'Rohan Mehta', 'VOTER', 'rohan@gmail.com');
+
+INSERT OR IGNORE INTO voters (voter_id, user_id, epic_no, dob, age, gender, constituency_id, address, phone, is_verified, has_voted) VALUES
+(1, 3, 'ECI781901', '2001-05-14', 25, 'Male', 1, '12, Connaught Place, New Delhi', '9876543210', 1, 0),
+(2, 4, 'ECI781902', '1998-11-20', 27, 'Female', 1, '45, Barakhamba Road, New Delhi', '9812345678', 1, 0),
+(3, 5, 'ECI892101', '1995-02-10', 31, 'Male', 2, '78, Marine Drive, Mumbai', '9723456789', 1, 0);
+`;
 
 async function getDatabase() {
     if (db) return db;
 
     const SQL = await initSqlJs();
 
-    // Check if tmp db exists
+    // 1. Try reading existing /tmp/election.db
     if (fs.existsSync(tmpDbPath)) {
         try {
-            const fileData = fs.readFileSync(tmpDbPath);
-            db = new SQL.Database(fileData);
+            const data = fs.readFileSync(tmpDbPath);
+            db = new SQL.Database(data);
             return db;
         } catch (e) {
-            console.error('Failed reading tmpDbPath, fallback to bundled db', e);
+            console.error('[ECMS] Could not read /tmp/election.db:', e.message);
         }
     }
 
-    // Check bundled db
-    const bundledPath = path.join(process.cwd(), 'election.db');
-    if (fs.existsSync(bundledPath)) {
-        const fileData = fs.readFileSync(bundledPath);
-        db = new SQL.Database(fileData);
-    } else {
-        db = new SQL.Database();
-        const sqlFile = path.join(process.cwd(), 'database', 'DDL_DML.sql');
-        if (fs.existsSync(sqlFile)) {
-            const sqlContent = fs.readFileSync(sqlFile, 'utf8');
-            db.run(sqlContent);
+    // 2. Try reading bundled election.db in various possible paths
+    const possiblePaths = [
+        path.join(process.cwd(), 'election.db'),
+        path.join(__dirname, '..', 'election.db'),
+        path.join(__dirname, 'election.db')
+    ];
+
+    for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+            try {
+                const data = fs.readFileSync(p);
+                db = new SQL.Database(data);
+                saveDatabase();
+                return db;
+            } catch (e) {
+                console.error('[ECMS] Failed reading db at ' + p + ':', e.message);
+            }
         }
     }
 
+    // 3. Fallback: Initialize in-memory database using embedded DDL & seeds
+    console.log('[ECMS] Initializing SQLite database from embedded seed schema...');
+    db = new SQL.Database();
+    db.run(EMBEDDED_SEED_SQL);
     saveDatabase();
     return db;
 }
@@ -44,10 +164,9 @@ function saveDatabase() {
     if (!db) return;
     try {
         const data = db.export();
-        const buffer = Buffer.from(data);
-        fs.writeFileSync(tmpDbPath, buffer);
+        fs.writeFileSync(tmpDbPath, Buffer.from(data));
     } catch (e) {
-        // In read-only environments where /tmp isn't writable, ignore
+        // Read-only filesystem warning ignore
     }
 }
 
@@ -79,6 +198,81 @@ function runSql(database, sql, params = []) {
     saveDatabase();
 }
 
+function getAction(req) {
+    let action = '';
+
+    // Check query params
+    if (req.query) {
+        if (req.query.action) action = req.query.action;
+        else if (req.query.path) action = req.query.path;
+        else if (req.query.match) action = req.query.match;
+    }
+
+    // Check URL search params
+    if (!action && req.url) {
+        try {
+            const parsed = new URL(req.url, 'http://localhost');
+            action = parsed.searchParams.get('action') || parsed.searchParams.get('path') || '';
+        } catch (e) {}
+    }
+
+    // Check Vercel headers
+    if (!action && req.headers) {
+        const headerPath = req.headers['x-matched-path'] || req.headers['x-forwarded-url'] || '';
+        if (headerPath) {
+            action = headerPath.replace(/^\/api\/?/, '');
+        }
+    }
+
+    // Check req.url path
+    if (!action && req.url) {
+        try {
+            const parsed = new URL(req.url, 'http://localhost');
+            action = parsed.pathname.replace(/^\/api\/?/, '');
+        } catch (e) {}
+    }
+
+    // Clean action
+    return (action || '').split('?')[0].replace(/^\/+|\/+$/g, '').toLowerCase();
+}
+
+async function getBody(req) {
+    if (!req) return {};
+    const m = (req.method || 'GET').toUpperCase();
+    if (m === 'GET' || m === 'HEAD') return {};
+
+    if (req.body) {
+        if (typeof req.body === 'string') {
+            try { return JSON.parse(req.body); } catch (e) { return {}; }
+        }
+        return req.body;
+    }
+
+    if (typeof req.on === 'function') {
+        return new Promise((resolve) => {
+            let buffer = '';
+            req.on('data', chunk => { buffer += chunk; });
+            req.on('end', () => {
+                try { resolve(buffer ? JSON.parse(buffer) : {}); }
+                catch (e) { resolve({}); }
+            });
+            req.on('error', () => resolve({}));
+        });
+    }
+
+    return {};
+}
+
+function getQueryParam(req, param) {
+    if (req.query && req.query[param] !== undefined) return req.query[param];
+    try {
+        const parsed = new URL(req.url, 'http://localhost');
+        return parsed.searchParams.get(param);
+    } catch (e) {
+        return null;
+    }
+}
+
 module.exports = async function handler(req, res) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -90,27 +284,15 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    const pathname = parsedUrl.pathname;
-    const method = req.method.toUpperCase();
-
-    // Parse body if JSON string
-    let body = req.body;
-    if (typeof body === 'string' && body.trim().length > 0) {
-        try {
-            body = JSON.parse(body);
-        } catch (e) {
-            body = {};
-        }
-    } else if (!body) {
-        body = {};
-    }
+    const action = getAction(req);
+    const method = req.method ? req.method.toUpperCase() : 'GET';
+    const body = await getBody(req);
 
     try {
         const database = await getDatabase();
 
         // 1. POST /api/login
-        if (pathname === '/api/login' && method === 'POST') {
+        if (action === 'login' && method === 'POST') {
             const username = (body.username || '').trim();
             const password = (body.password || '').trim();
 
@@ -183,7 +365,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 2. POST /api/register
-        if (pathname === '/api/register' && method === 'POST') {
+        if (action === 'register' && method === 'POST') {
             const { fullName, dob, gender, constituencyId, address, phone, username, password, email } = body;
 
             if (!fullName || !dob || !gender || !address || !phone || !username || !password) {
@@ -264,7 +446,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 3. GET /api/constituencies
-        if (pathname === '/api/constituencies' && method === 'GET') {
+        if (action === 'constituencies' && method === 'GET') {
             const rows = queryAll(database, 'SELECT constituency_id, name, state, total_voters, status FROM constituencies ORDER BY name ASC');
             const result = rows.map(r => ({
                 constituencyId: r.constituency_id,
@@ -278,7 +460,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 4. GET /api/parties
-        if (pathname === '/api/parties' && method === 'GET') {
+        if (action === 'parties' && method === 'GET') {
             const rows = queryAll(database, 'SELECT party_id, party_name, abbreviation, symbol, leader_name, manifesto FROM parties ORDER BY party_name ASC');
             const result = rows.map(r => ({
                 partyId: r.party_id,
@@ -293,8 +475,8 @@ module.exports = async function handler(req, res) {
         }
 
         // 5. GET /api/candidates
-        if (pathname === '/api/candidates' && method === 'GET') {
-            const constId = parseInt(parsedUrl.searchParams.get('constituencyId') || '1', 10);
+        if (action === 'candidates' && method === 'GET') {
+            const constId = parseInt(getQueryParam(req, 'constituencyId') || '1', 10);
             const rows = queryAll(database,
                 'SELECT c.candidate_id, c.full_name, c.party_id, p.party_name, p.abbreviation, p.symbol, ' +
                 '       c.constituency_id, con.name AS constituency_name, c.age, c.education, c.criminal_cases, ' +
@@ -327,7 +509,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 6. POST /api/vote
-        if (pathname === '/api/vote' && method === 'POST') {
+        if (action === 'vote' && method === 'POST') {
             const voterId = parseInt(body.voterId, 10);
             const candidateId = parseInt(body.candidateId, 10);
 
@@ -402,7 +584,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 7. GET /api/results
-        if (pathname === '/api/results' && method === 'GET') {
+        if (action === 'results' && method === 'GET') {
             const votesPerConst = {};
             const voteRows = queryAll(database, 'SELECT constituency_id, COUNT(*) AS total FROM votes GROUP BY constituency_id');
             voteRows.forEach(r => { votesPerConst[r.constituency_id] = r.total; });
@@ -443,7 +625,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 8. GET /api/admin/stats
-        if (pathname === '/api/admin/stats' && method === 'GET') {
+        if (action === 'admin/stats' && method === 'GET') {
             const vRow = queryOne(database, 'SELECT COUNT(*) AS total FROM voters');
             const totalVoters = vRow ? vRow.total : 0;
 
@@ -478,7 +660,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 9. GET /api/admin/voters
-        if (pathname === '/api/admin/voters' && method === 'GET') {
+        if (action === 'admin/voters' && method === 'GET') {
             const rows = queryAll(database,
                 'SELECT v.voter_id, v.epic_no, u.username, u.full_name, v.dob, v.age, v.gender, ' +
                 '       c.name AS constituency_name, v.phone, v.is_verified, v.has_voted, v.voted_at ' +
@@ -506,7 +688,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 10. POST /api/admin/candidates
-        if (pathname === '/api/admin/candidates' && method === 'POST') {
+        if (action === 'admin/candidates' && method === 'POST') {
             const { fullName, partyId, constituencyId, age, education, criminalCases, assetsDeclared } = body;
             const candAge = parseInt(age, 10);
             if (candAge < 25) {
@@ -529,7 +711,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 11. POST /api/admin/constituency (DML Execution)
-        if (pathname === '/api/admin/constituency' && method === 'POST') {
+        if (action === 'admin/constituency' && method === 'POST') {
             const { name, state, status } = body;
             if (!name || !state) {
                 res.status(200).json({ success: false, message: 'Constituency name and State are required.' });
@@ -570,7 +752,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 12. POST /api/voter/update (Form 8 UPDATE)
-        if (pathname === '/api/voter/update' && method === 'POST') {
+        if (action === 'voter/update' && method === 'POST') {
             const { voterId, phone, address, email } = body;
             const vid = parseInt(voterId, 10);
             if (!vid || !phone || !address) {
@@ -595,7 +777,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 13. POST /api/admin/candidate-update
-        if (pathname === '/api/admin/candidate-update' && method === 'POST') {
+        if (action === 'admin/candidate-update' && method === 'POST') {
             const { candidateId, education, criminalCases, assetsDeclared } = body;
             const cid = parseInt(candidateId, 10);
             runSql(database,
@@ -607,7 +789,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 14. POST /api/admin/constituency-update
-        if (pathname === '/api/admin/constituency-update' && method === 'POST') {
+        if (action === 'admin/constituency-update' && method === 'POST') {
             const { constituencyId, status } = body;
             const cid = parseInt(constituencyId, 10);
             runSql(database, 'UPDATE constituencies SET status = ? WHERE constituency_id = ?', [status, cid]);
@@ -616,7 +798,7 @@ module.exports = async function handler(req, res) {
         }
 
         // 15. GET /api/admin/audit-logs
-        if (pathname === '/api/admin/audit-logs' && method === 'GET') {
+        if (action === 'admin/audit-logs' && method === 'GET') {
             const rows = queryAll(database, 'SELECT log_id, action_type, performed_by, description, timestamp FROM audit_logs ORDER BY log_id DESC LIMIT 50');
             const result = rows.map(r => ({
                 id: r.log_id,
@@ -630,15 +812,21 @@ module.exports = async function handler(req, res) {
         }
 
         // 16. GET /api/sql-script
-        if (pathname === '/api/sql-script' && method === 'GET') {
+        if (action === 'sql-script' && method === 'GET') {
             const sqlFile = path.join(process.cwd(), 'database', 'DDL_DML.sql');
-            const content = fs.existsSync(sqlFile) ? fs.readFileSync(sqlFile, 'utf8') : '-- SQL File not found';
+            let content = '';
+            if (fs.existsSync(sqlFile)) {
+                content = fs.readFileSync(sqlFile, 'utf8');
+            } else {
+                content = EMBEDDED_SEED_SQL;
+            }
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
             res.status(200).send(content);
             return;
         }
 
-        res.status(404).json({ error: 'Endpoint not found' });
+        console.warn(`[ECMS 404] Unmatched action '${action}' for method ${method}`);
+        res.status(404).json({ error: `Endpoint not found: action='${action}'` });
 
     } catch (err) {
         console.error('API Error:', err);
