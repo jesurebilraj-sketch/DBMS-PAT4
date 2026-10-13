@@ -1,0 +1,25 @@
+{
+  "name": "dbms-pat4",
+  "version": "1.0.0",
+  "description": "**Technology Stack:** Java (JDK 26 / 17+), Java Database Connectivity (JDBC), Embedded Java HTTP Server, HTML5, CSS3, Modern JavaScript, SQLite & MySQL compatible schema.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jesurebilraj-sketch/DBMS-PAT4.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jesurebilraj-sketch/DBMS-PAT4/issues"
+  },
+  "homepage": "https://github.com/jesurebilraj-sketch/DBMS-PAT4#readme",
+  "dependencies": {
+    "sql.js": "^1.14.2"
+  }
+}

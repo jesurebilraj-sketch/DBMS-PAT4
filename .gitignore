@@ -1,9 +1,13 @@
-# Compiled class files
+# Compiled Java binaries
 bin/
 *.class
 
-# Log files
+# Node dependencies
+node_modules/
+
+# Logs & temp
 *.log
+.vercel/
 
 # OS metadata
 .DS_Store

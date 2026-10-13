@@ -303,3 +303,30 @@ http://localhost:8080/
 | **Duplicate Voting Prevention** | `voter1` attempts to vote again | Checks `has_voted == 1`. | ❌ **Blocked:** `"ACCESS DENIED: You have already cast your vote! Duplicate voting is prohibited."` |
 | **Live Election Analytics** | Navigates to *Live Results* | Aggregates votes cast, computes candidate vote share percentages and constituency winners. | Real-time turnout %, ranking table, progress bars, and leading candidate badges. |
 
+---
+
+## ☁️ 8. Deploying to Vercel (Cloud Deployment)
+
+The project includes built-in Vercel configuration (`vercel.json`) and a Serverless REST API backend (`api/index.js` powered by `sql.js` SQLite WebAssembly).
+
+### Step-by-Step Vercel Deployment Instructions:
+
+1. **Push Code to GitHub:**
+   Ensure all changes are pushed to your GitHub repository (`https://github.com/jesurebilraj-sketch/DBMS-PAT4`).
+2. **Log In to Vercel:**
+   Go to [vercel.com](https://vercel.com/) and sign in with your GitHub account.
+3. **Import the Repository:**
+   - Click **"Add New..."** → **"Project"**.
+   - Find and select `jesurebilraj-sketch/DBMS-PAT4`.
+   - Click **"Import"**.
+4. **Configure Project:**
+   - **Framework Preset:** Leave as *Other* (detected automatically).
+   - **Root Directory:** `./` (Leave as default).
+   - **Build Command:** Leave default (`npm run build` or empty).
+   - **Output Directory:** Leave default.
+5. **Deploy:**
+   - Click **"Deploy"**.
+   - Vercel will install dependencies and deploy the site in ~30 seconds.
+   - You will receive a live URL (e.g., `https://dbms-pat4-xxxx.vercel.app/`).
+
+
